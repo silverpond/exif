@@ -44,13 +44,35 @@ VALUE rb_value(VALUE self, VALUE key){
   return rb_hash_aref(rb_contents, key);
 }
 
+int orientation_to_int(char* buf) {
+  if (strcmp(buf, "Top-left") == 0) {
+    return 1;
+  } else if (strcmp(buf, "Top-right") == 0) {
+    return 2;
+  } else if (strcmp(buf, "Bottom-right") == 0) {
+    return 3;
+  } else if (strcmp(buf, "Bottom-left") == 0) {
+    return 4;
+  } else if (strcmp(buf, "Left-top") == 0) {
+    return 5;
+  } else if (strcmp(buf, "Right-top") == 0) {
+    return 6;
+  } else if (strcmp(buf, "Right-bottom") == 0) {
+    return 7;
+  } else if (strcmp(buf, "Left-bottom") == 0) {
+    return 8;
+  } else {
+    return 0;
+  }
+}
+
 void each_content(ExifContent *ec, void *self_ptr){
   VALUE *self = (VALUE*)self_ptr;
   VALUE rb_contents = rb_iv_get(*self, "@contents");
   Check_Type(rb_contents, T_HASH);
   ExifIfd ifd = exif_content_get_ifd(ec);
   VALUE ifd_name = IFD2SYM[ifd]; //rb_str_new_cstr(exif_ifd_get_name(ifd));
-  if(ifd == EXIF_IFD_COUNT) rb_raise(rb_eRuntimeError, "Con't get IFD.");
+  if(ifd == EXIF_IFD_COUNT) rb_raise(rb_eRuntimeError, "Could not get IFD.");
   else rb_hash_aset(rb_contents, ifd_name, rb_hash_new());
   exif_content_foreach_entry(ec, each_entry, self);
 }
@@ -70,7 +92,11 @@ void each_entry(ExifEntry *ee, void *self_ptr){
   // case EXIF_FORMAT_ASCII:
   //   break;
   case EXIF_FORMAT_SHORT:
-    value = INT2NUM(atoi(buf));
+    if (strcmp(attr_name, "@orientation") == 0) {
+      value = INT2NUM(orientation_to_int(buf));
+    } else {
+      value = INT2NUM(atoi(buf));
+    }
     break;
   case EXIF_FORMAT_LONG:
     value = INT2NUM(atol(buf));
@@ -119,7 +145,6 @@ VALUE process_value(VALUE *self_ptr, ExifIfd ifd, ExifTag tag, char *buf){
     timer.tm_min  = atoi(buf + 14);
     timer.tm_sec  = atoi(buf + 17);
     return rb_time_new(mktime(&timer), 0);
-    break;
   }
   case EXIF_TAG_GPS_LATITUDE:  // EXIF_TAG_INTEROPERABILITY_INDEX
   case EXIF_TAG_GPS_LONGITUDE: // EXIF_TAG_INTEROPERABILITY_VERSION
@@ -141,7 +166,7 @@ VALUE process_value(VALUE *self_ptr, ExifIfd ifd, ExifTag tag, char *buf){
     double degree = (degrees * 3600 + minutes * 60 + seconds) / 3600;
     if(ref_value == 'S' || ref_value == 'W') degree *= -1;
     return rb_float_new(degree);
-  }    
+  }
   }
   return rb_str_new_cstr(buf);
 }
