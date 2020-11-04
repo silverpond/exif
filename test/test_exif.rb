@@ -270,4 +270,9 @@ class TestExif < Minitest::Test
     assert_equal Float::INFINITY, data.exposure_index
     assert_equal (-Float::INFINITY), data.exposure_bias_value
   end
+
+  def test_orientation
+    data = Exif::Data.new(IO.read(File.expand_path('../images/sample-orientation-6.jpg', __FILE__)))
+    assert_equal 6, data.orientation
+  end
 end
